@@ -108,3 +108,17 @@ class NotificationHandler:
         )
         logger.debug("Sending lower fare notification...")
         self.send_notification(message, NotificationLevel.INFO)
+        
+    def flight_unavailable(self, flight: Flight) -> None:
+        # Don't send notifications if no new flights are scheduled
+
+        flight_schedule_message = (
+            f"The flight from {flight.departure_airport} to {flight.destination_airport} at "
+            f"{flight.departure_time} UTC is showing less than 8 seats available.\n"
+            f"Consider booking your companion now."
+        )
+
+        logger.debug("Sending flight booking information.")
+        self.send_notification(flight_schedule_message, NotificationLevel.INFO)
+        
+    
