@@ -10,6 +10,7 @@ from .log import get_logger
 from .notification_handler import NotificationHandler
 from .utils import LoginError, RequestError
 from .webdriver import WebDriver
+from .passenger_checker import PassengerChecker
 
 logger = get_logger(__name__)
 
@@ -62,7 +63,19 @@ class FlightRetriever:
             confirmation_numbers.append(flight["confirmationNumber"])
 
         self.checkin_scheduler.schedule(confirmation_numbers)
-
+        
+    def _check_available_passengers(self) -> None:
+        flights = self.checkin_scheduler.flights
+        logger.debug("Checking if flight still has 8+ seats left for %d flights", len(flights))
+        passenger_checker = PassengerChecker(self)
+        for flight in flights:
+            # If a passenger checker fails, don't completely exit. Just print the error
+            # and continue
+            try:
+                passenger_checker.check_passenger_availability(flight)
+            except RequestError as err:
+                logger.error("Requesting error during passenger check. %s. Skipping...", err)
+                
     def _check_flight_fares(self) -> None:
         if not self.config.check_fares:
             return
@@ -115,6 +128,7 @@ class AccountFlightRetriever(FlightRetriever):
             flights = self._get_flights()
             self._schedule_reservations(flights)
             self.checkin_scheduler.remove_departed_flights()
+            self._check_available_passengers()
             self._check_flight_fares()
 
             if self.config.retrieval_interval <= 0:
